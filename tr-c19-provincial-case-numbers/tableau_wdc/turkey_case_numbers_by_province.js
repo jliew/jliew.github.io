@@ -38,7 +38,7 @@
             dataArray = [];
 
         // Gather only the most recent data with an ID greater than 'lastDate'
-        Papa.parse("https://github.com/jliew/tr-c19-provincial-case-numbers/raw/master/data/vaka_say%C4%B1s%C4%B1.csv", {
+        Papa.parse("https://raw.githubusercontent.com/jliew/tr-c19-provincial-case-numbers/master/data/vaka_say%C4%B1s%C4%B1.csv", {
             header: true,
             download: true,
             skipEmptyLines: true,
