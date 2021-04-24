@@ -11,77 +11,139 @@
     <title>Turkey COVID-19 Provincial Case Numbers</title>
   </head>
   <body>
-    <div id="container" style="width:100%; height:900px;"></div>
+        <div class="container-fluid">
+            <header class="d-flex flex-wrap justify-content-center py-3 mb-4 border-bottom">
+                <ul class="nav nav-pills" id="pills-tab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="pills-nominal-tab" data-bs-toggle="pill" data-bs-target="#pills-nominal" type="button" role="tab" aria-controls="pills-nominal" aria-selected="true">Case numbers (per 100k)</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="pills-diff-tab" data-bs-toggle="pill" data-bs-target="#pills-diff" type="button" role="tab" aria-controls="pills-diff" aria-selected="false">Percentage difference</button>
+                    </li>
+                </ul>
+            </header>
+            <div class="tab-content" id="pills-tabContent">
+                <div class="tab-pane fade show active" id="pills-nominal" role="tabpanel" aria-labelledby="pills-nominal-tab" style="width:100%; height:900px;"></div>
+                <div class="tab-pane fade" id="pills-diff" role="tabpanel" aria-labelledby="pills-diff-tab" style="width:100%; height:900px;"></div>
+            </div>
+        </div>
 
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/papaparse@latest/papaparse.min.js"></script>
-    <script src="https://code.highcharts.com/highcharts.js"></script>
-    <script>
-        $(document).ready(function() {
-            var url = 'https://raw.githubusercontent.com/jliew/tr-c19-provincial-case-numbers/master/data/vaka_say%C4%B1s%C4%B1.csv'
+        <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js" integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf" crossorigin="anonymous"></script>
+        <script src="https://unpkg.com/papaparse@latest/papaparse.min.js"></script>
+        <script src="https://code.highcharts.com/highcharts.js"></script>
+        <script>
+            function csvCallback(results) {
+                var provinceDataDict = {};
+                for (var i = 0, len = results.data.length; i < len; i++) {
+                    row = results.data[i]
 
-            Papa.parse("https://raw.githubusercontent.com/jliew/tr-c19-provincial-case-numbers/master/data/vaka_say%C4%B1s%C4%B1.csv", {
-                header: true,
-                download: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    var provinceDataDict = {};
-                    for (var i = 0, len = results.data.length; i < len; i++) {
-                        row = results.data[i]
-
-                        if (!(row.data_adi in provinceDataDict)) {
-                            provinceDataDict[row.data_adi] = []
-                        }
-
-                        data = provinceDataDict[row.data_adi]
-                        data.push({
-                            x: Date.parse(row.date),
-                            y: parseFloat(row.data_detay)
-                        })
-                        provinceDataDict[row.data_adi] = data
+                    if (!(row.data_adi in provinceDataDict)) {
+                        provinceDataDict[row.data_adi] = []
                     }
 
-                    var series = []
-                    Object.keys(provinceDataDict).map(function(key, index) {
-                        data = provinceDataDict[key]
-                        data.sort(function(a, b) {
-                            return a.x - b.x;
-                        })
+                    provinceDataDict[row.data_adi].push({
+                        x: Date.parse(row.date),
+                        y: parseFloat(row.data_detay)
+                    })
+                }
 
-                        series.push({
-                            name: key,
-                            data: data
-                        });
+                var nominal_series = [], diff_series = [];
+                Object.keys(provinceDataDict).map(function(key, index) {
+                    nominal_data = provinceDataDict[key]
+                    nominal_data.sort(function(a, b) {
+                        return a.x - b.x;
+                    })
+
+                    nominal_series.push({
+                        name: key,
+                        data: nominal_data
                     });
 
-                    Highcharts.chart('container', {
-                        chart: {
-                            type: 'line'
+                    diff_data = []
+                    for (var i = 0; i < nominal_data.length; i++) {
+                        var percent = 0;
+                        if (i > 0) {
+                            percent = (nominal_data[i].y - nominal_data[i-1].y) / nominal_data[i-1].y * 100;
+                        }
+                        diff_data.push({
+                            x: nominal_data[i].x,
+                            y: parseFloat(percent.toFixed(1))
+                        })
+                    }
+
+                    diff_series.push({
+                        name: key,
+                        data: diff_data
+                    })
+                });
+
+                Highcharts.chart('pills-nominal', {
+                    chart: {
+                        type: 'line'
+                    },
+                    title: {
+                        text: 'Turkey COVID-19 Provincial Case Numbers (per 100k)'
+                    },
+                    subtitle: {
+                        text: 'Source: <a href="https://covid19.saglik.gov.tr">T.C. Sağlık Bakanlığı</a>',
+                        useHTML: true
+                    },
+                    xAxis: {
+                        type: 'datetime'
+                    },
+                    yAxis: {
+                        title: {
+                            text: 'Case numbers (per 100k)'
+                        }
+                    },
+                    series: nominal_series,
+                    credits: {
+                        text: 'https://github.com/jliew/tr-c19-provincial-case-numbers',
+                        href: 'https://https://github.com/jliew/tr-c19-provincial-case-numbers'
+                    }
+                });
+
+                Highcharts.chart('pills-diff', {
+                    chart: {
+                        type: 'line'
+                    },
+                    title: {
+                        text: 'Turkey COVID-19 Provincial Case Numbers (per 100k) - Percentage difference from previous week'
+                    },
+                    subtitle: {
+                        text: 'Source: <a href="https://covid19.saglik.gov.tr">T.C. Sağlık Bakanlığı</a>',
+                        useHTML: true
+                    },
+                    xAxis: {
+                        type: 'datetime'
+                    },
+                    yAxis: {
+                        labels: {
+                            format: '{value}%'
                         },
                         title: {
-                            text: 'Turkey COVID-19 Provincial Case Numbers (per 100k)'
-                        },
-                        subtitle: {
-                            text: '<a href="https://github.com/jliew/tr-c19-provincial-case-numbers">GitHub</a>',
-                            useHTML: true
-                        },
-                        xAxis: {
-                            type: 'datetime'
-                        },
-                        yAxis: {
-                            title: {
-                                text: 'Case numbers (per 100k)'
-                            }
-                        },
-                        series: series,
-                        credits: {
-                            text: 'T.C. Sağlık Bakanlığı / Turkey Ministry of Health',
-                            href: 'https://covid19.saglik.gov.tr'
+                            text: 'Percentage difference from previous week'
                         }
-                    });
-                }
-            });
-        })
-    </script>
+                    },
+                    series: diff_series,
+                    credits: {
+                        text: 'https://github.com/jliew/tr-c19-provincial-case-numbers',
+                        href: 'https://https://github.com/jliew/tr-c19-provincial-case-numbers'
+                    }
+                });
+            }
+
+            $(document).ready(function() {
+                var url = 'https://raw.githubusercontent.com/jliew/tr-c19-provincial-case-numbers/master/data/vaka_say%C4%B1s%C4%B1.csv'
+
+                Papa.parse("https://raw.githubusercontent.com/jliew/tr-c19-provincial-case-numbers/master/data/vaka_say%C4%B1s%C4%B1.csv", {
+                    header: true,
+                    download: true,
+                    skipEmptyLines: true,
+                    complete: csvCallback
+                });
+            })
+        </script>
   </body>
 </html>
