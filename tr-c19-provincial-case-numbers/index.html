@@ -5,10 +5,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" integrity="sha384-B0vP5xmATw1+K9KRQjQERJvTumQW0nPEzvF6L/Z6nronJ3oUOFUFpCjEUQouq2+l" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6" crossorigin="anonymous">
 
     <title>Turkey COVID-19 Provincial Case Numbers</title>
+
   </head>
   <body>
         <div class="container-fluid">
@@ -20,11 +20,26 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="pills-diff-tab" data-bs-toggle="pill" data-bs-target="#pills-diff" type="button" role="tab" aria-controls="pills-diff" aria-selected="false">Percentage difference</button>
                     </li>
+                    <li class="nav-item dropdown" style="margin-left: 20px;">
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">Provinces</a>
+                        <ul class="dropdown-menu">
+                            <div class="form-check" id="dropdown-form">
+                                <li>
+                                    <a class="dropdown-item" href="#">
+                                        <input class="form-check-input" type="checkbox" value="" id="check-select-all" checked="checked">
+                                        <label class="form-check-label" for="check-select-all">SELECT ALL</label>
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                            </div>
+                        </ul>
+                    </li>
                 </ul>
             </header>
+
             <div class="tab-content" id="pills-tabContent">
-                <div class="tab-pane fade show active" id="pills-nominal" role="tabpanel" aria-labelledby="pills-nominal-tab" style="width:100%; height:900px;"></div>
-                <div class="tab-pane fade" id="pills-diff" role="tabpanel" aria-labelledby="pills-diff-tab" style="width:100%; height:900px;"></div>
+                <div class="tab-pane fade show active" id="pills-nominal" role="tabpanel" aria-labelledby="pills-nominal-tab" style="width:100%; height:800px;"></div>
+                <div class="tab-pane fade" id="pills-diff" role="tabpanel" aria-labelledby="pills-diff-tab" style="width:100%; height:800px;"></div>
             </div>
         </div>
 
@@ -32,7 +47,60 @@
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js" integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf" crossorigin="anonymous"></script>
         <script src="https://unpkg.com/papaparse@latest/papaparse.min.js"></script>
         <script src="https://code.highcharts.com/highcharts.js"></script>
+
         <script>
+            var nominalChart, diffChart, nominalSeries = [], diffSeries = [];
+
+            function getSeriesIndex(chart, seriesName) {
+                for (var i = 0; i < chart.series.length; i++) {
+                    if (chart.series[i].name == seriesName) {
+                        return i;
+                    }
+                }
+            }
+
+            function getNominalSeriesObject(name) {
+                for (var i = 0; i < nominalSeries.length; i++) {
+                    if (nominalSeries[i].name == name) {
+                        return nominalSeries[i];
+                    }
+                }
+            }
+
+            function getDiffSeriesObject(name) {
+                for (var i = 0; i < diffSeries.length; i++) {
+                    if (diffSeries[i].name == name) {
+                        return diffSeries[i];
+                    }
+                }
+            }
+
+            function checkboxCallback(event) {
+                province = event.target.id.replace('check-', '');
+                if (this.checked) {
+                    if (event.target.id == 'check-select-all') {
+                        $("#dropdown-form .province:checkbox").prop('checked', true)
+                        initNominalChart(nominalSeries)
+                        initDiffChart(diffSeries)
+                    } else {
+                        nominalChart.addSeries(getNominalSeriesObject(province));
+                        diffChart.addSeries(getDiffSeriesObject(province));
+                    }
+                } else {
+                    if (event.target.id == 'check-select-all') {
+                        $("#dropdown-form .province:checkbox").prop('checked', false)
+                        initNominalChart([])
+                        initDiffChart([])
+                    } else {
+                        i = getSeriesIndex(nominalChart, province)
+                        nominalChart.series[i].remove()
+
+                        i = getSeriesIndex(diffChart, province)
+                        diffChart.series[i].remove()
+                    }
+                }
+            }
+
             function csvCallback(results) {
                 var provinceDataDict = {};
                 for (var i = 0, len = results.data.length; i < len; i++) {
@@ -48,14 +116,19 @@
                     })
                 }
 
-                var nominal_series = [], diff_series = [];
                 Object.keys(provinceDataDict).map(function(key, index) {
+                    var checkbox = `<a class="dropdown-item" href="#">
+                                        <input class="form-check-input province" type="checkbox" value="" id="check-${key}" checked="checked">
+                                        <label class="form-check-label" for="check-${key}">${key}</label>
+                                    </a>`;
+                    $("#dropdown-form").append(checkbox);
+
                     nominal_data = provinceDataDict[key]
                     nominal_data.sort(function(a, b) {
                         return a.x - b.x;
                     })
 
-                    nominal_series.push({
+                    nominalSeries.push({
                         name: key,
                         data: nominal_data
                     });
@@ -72,15 +145,23 @@
                         })
                     }
 
-                    diff_series.push({
+                    diffSeries.push({
                         name: key,
                         data: diff_data
                     })
                 });
 
-                Highcharts.chart('pills-nominal', {
+                $("#dropdown-form :checkbox").change(checkboxCallback)
+
+                initNominalChart(nominalSeries);
+                initDiffChart(diffSeries);
+            }
+
+            function initNominalChart(series) {
+                nominalChart = Highcharts.chart('pills-nominal', {
                     chart: {
-                        type: 'line'
+                        type: 'line',
+                        zoomType: 'x'
                     },
                     title: {
                         text: 'Turkey COVID-19 Provincial Case Numbers (per 100k)'
@@ -97,16 +178,19 @@
                             text: 'Case numbers (per 100k)'
                         }
                     },
-                    series: nominal_series,
+                    series: series,
                     credits: {
                         text: 'https://github.com/jliew/tr-c19-provincial-case-numbers',
                         href: 'https://https://github.com/jliew/tr-c19-provincial-case-numbers'
                     }
                 });
+            }
 
-                Highcharts.chart('pills-diff', {
+            function initDiffChart(series) {
+                diffChart = Highcharts.chart('pills-diff', {
                     chart: {
-                        type: 'line'
+                        type: 'line',
+                        zoomType: 'x'
                     },
                     title: {
                         text: 'Turkey COVID-19 Provincial Case Numbers (per 100k) - Percentage difference from previous week'
@@ -126,7 +210,7 @@
                             text: 'Percentage difference from previous week'
                         }
                     },
-                    series: diff_series,
+                    series: series,
                     credits: {
                         text: 'https://github.com/jliew/tr-c19-provincial-case-numbers',
                         href: 'https://https://github.com/jliew/tr-c19-provincial-case-numbers'
@@ -137,7 +221,7 @@
             $(document).ready(function() {
                 var url = 'https://raw.githubusercontent.com/jliew/tr-c19-provincial-case-numbers/master/data/vaka_say%C4%B1s%C4%B1.csv'
 
-                Papa.parse("https://raw.githubusercontent.com/jliew/tr-c19-provincial-case-numbers/master/data/vaka_say%C4%B1s%C4%B1.csv", {
+                Papa.parse(url, {
                     header: true,
                     download: true,
                     skipEmptyLines: true,
